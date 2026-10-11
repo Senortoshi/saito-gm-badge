@@ -48,3 +48,17 @@ We keep both lessons (sequential serials, on-chain proof) and add what only Sait
 - Upstream PR: https://github.com/SaitoTech/saito/pull/719 (branch `gmbadge` on fork github.com/Senortoshi/saito, base `master`).
 - To reach saito.io users the Saito team must merge AND run the module on their nodes (the node wallet is the issuer). Alternative: run our own public node per `mods/gmbadge/DEPLOY.md` (needs a VPS + domain; not provisioned yet).
 - Still open: milestone trophies, streak freeze, perks, reorg handling, mainnet fee/rent measurement on staging.saito.io.
+
+## Redesign 2026-10-11 (ranks)
+- Tiers renamed to Saito/Bitcoin ranks with rarity: Common Genesis 1, Uncommon Timestamp 7, Rare Merkle 30, Epic Routing 100, Legendary Golden Ticket 365, Exotic Satoshi 1000 (new 6th tier; MILESTONES now include 1000).
+- Art: black locked hex, inner isometric Saito "impossible cube", cube micro-pattern, diagonal gm/SAITO microtext, micro-printed serial on the bottom edge. Golden Ticket and Satoshi get an animated metallic rim (SMIL animateTransform). Header icon is now fa-cube.
+- Preview labels in web/preview.html and the artifact page updated to the ranks.
+
+## Animation budget 2026-10-11 (living rims kept, cost bounded)
+Measured in windowed Chrome via CDP tracing (6 s windows, median of 2, 400 Legendary/Exotic rims inline; `mods/gmbadge/web/stress.html`, script in session scratchpad `measure-rims.js`):
+- 400 rims all animating (SMIL on gradientTransform): main thread ~70-74%, paint ~1.1 s / 6 s.
+- 400 rims, viewport-only pausing: ~31-33%. Pausing is not free: paused SMIL elements still cost style work.
+- Shared document-level gradient for all rims: worse (every referencer repaints when the one gradient moves).
+- CSS compositor rim (conic-gradient + transform rotate): paint ~0 but 400 composited layers made the main thread *more* busy, and plain rotating squares showed the same; not a free lunch at scale.
+- Shipped: still markup by default (gradient frozen, no animation element), swap in animated markup only for <=24 rims in view (IntersectionObserver, document order), `will-change: transform; contain: paint` on live ones, pause all on hidden tab, stills under prefers-reduced-motion / update:slow / saveData. Result: 400 rims -> ~30% main, paint 0.5 s; 30 rims -> ~11% (vs 12% unbounded). Worst case bounded regardless of feed length; typical feeds (few Legendary holders) near static cost.
+- Research notes: `research_notes/animated_badge_rendering.md` (Discord statics-unless-hover, Steam play-on-hover with still fallback, Twitch first-frame thumbnail, web.dev compositor rules, WebKit display:none defs bug).
