@@ -6,8 +6,8 @@ Nobody can buy it. Anyone can verify it.
 ![badge tiers](docs/badge-tiers.jpg)
 
 - **Earned, never sold.** Your first on-chain gm mints a `gm` NFT to your wallet with a sequential serial. Earlier is lower.
-- **Tiers from your streak:** Sprout (1), Green Check (7), Gold Ring (30), Diamond (100), Flame (365). Miss a day and it cracks for 24h, then restarts. Lifetime gms never reset.
-- **Plain to 3D.** The first tiers are the flat classic green check. Depth, metal, glass and ember arrive with the streak.
+- **Ranks from your streak:** Common Genesis (1), Uncommon Timestamp (7), Rare Merkle (30), Epic Routing (100), Legendary Golden Ticket (365), Exotic Satoshi (1000). Miss a day and the cube cracks for 24h, then restarts. Lifetime gms never reset.
+- **The locked hex.** Every rank is the same black hex with the Saito impossible cube inside. Rarity shows in the material: paper, parchment, gold, ice, then a living gold rim at Golden Ticket and a living chrome rim at Satoshi.
 - **Everywhere.** The badge is drawn next to your name in Red Square, Chat, Arcade and profiles.
 - **Secured.** Wallets verify the issuer key and serial on the NFT itself and flag anything else as counterfeit. The art carries a Saito-cube micro matrix, a micro-text ring and a micro-printed serial line.
 - **Self-sustaining.** Each badge holds a 1 SAITO deposit so it pays its own ATR rent.
