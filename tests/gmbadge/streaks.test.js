@@ -142,23 +142,37 @@ test('decorator wraps returnAddressHTML, calls through, and unwraps', () => {
 });
 
 test('one cube, two levels of detail, no rank skins', () => {
-  const small = SVG.render({ size: 18 });
-  const large = SVG.render({ size: 256, block: 184223 });
+  const key = 'pYKMUjEaXntK4XZjxDGsfYdVmJEJhpz5XMriMNaWukTu';
+  const small = SVG.render({ size: 18, publickey: key, block: 184223 });
+  const large = SVG.render({ size: 256, publickey: key, block: 184223 });
   assert.match(small, /^<svg /);
   assert.match(small, /width="18"/);
-  assert.doesNotMatch(small, /BLOCK/); // no microprint on the nameplate
-  assert.equal((small.match(/stroke-width="0\.9"/g) || []).length, 0); // no fold grooves when tiny
-  assert.match(large, />FIRST GM</);
-  assert.match(large, />BLOCK 184223</);
-  assert.equal((large.match(/stroke-width="0\.9"/g) || []).length, 2); // folds at full detail
+  // the nameplate stays clean: no microprint, no grain, no folds, no filters
+  assert.doesNotMatch(small, /BLOCK|textPath|feTurbulence|filter=|stroke-width="0\.9"/);
+  // full detail carries the folds and the security layer
+  assert.equal((large.match(/stroke-width="0\.9"/g) || []).length, 2);
+  assert.match(large, /<textPath [^>]*>[^<]*FIRST GM BLOCK 184223/);
+  assert.match(large, /pYKMUjEaXn/); // key fragment in the microtext ring
+  assert.match(large, />gm gm gm /); // nanotext in the cube face
   assert.match(SVG.render({ size: 96, on: false }), /gm-cube-off/);
   assert.match(SVG.renderDataUri({ size: 18 }), /^data:image\/svg\+xml;utf8,/);
   assert.doesNotMatch(SVG.render({ title: '<script>' }), /<script>/);
-  // the only inputs are size / on / block / title; streak length never changes the art
+  // streak length never changes the art
   assert.equal(
     SVG.render({ size: 18, streak: 1 }).replace(/gmc\d+/g, ''),
     SVG.render({ size: 18, streak: 1000 }).replace(/gmc\d+/g, '')
   );
   assert.match(BadgeDecorator.inlineCSS(), /content:attr\(data-gm-n\)/);
   assert.doesNotMatch(small + large, /Genesis|Timestamp|Merkle|Routing|Golden|Satoshi|Legendary|Exotic|verified/i);
+});
+
+test('security engraving is unique per holder and stable for the same holder', () => {
+  const rosette = (svg) => svg.match(/clip-path="url\(#gmc\d+well\)"><path d="([^"]+)"/)[1];
+  const a1 = rosette(SVG.render({ size: 256, publickey: 'holder-a', block: 100 }));
+  const a2 = rosette(SVG.render({ size: 256, publickey: 'holder-a', block: 100 }));
+  const b = rosette(SVG.render({ size: 256, publickey: 'holder-b', block: 100 }));
+  const c = rosette(SVG.render({ size: 256, publickey: 'holder-a', block: 101 }));
+  assert.equal(a1, a2);
+  assert.notEqual(a1, b);
+  assert.notEqual(a1, c);
 });

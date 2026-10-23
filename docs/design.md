@@ -16,12 +16,16 @@ against the Saito source (SaitoTech/saito at 942afcbd, 2026-07-27).
 - When streak data arrives, `update(keys)` re-stamps names already on screen in one pass. No MutationObserver, no IntersectionObserver, no animation.
 
 ## Art
-One object, two levels of detail (`lib/badge-svg.js`):
-- Machined hex bevel (light upper-left → dark lower-right), dark enamel face with a soft reflection, a recessed well (shadowed upper wall, lit lower lip), the Saito cube as three solid faces (top takes the key light, left the fill, right in shade), a glint on the cube and the bevel, a contact shadow.
-- Nameplate (< 48px): tighter corner rounding, thicker bevel, bigger cube, no folds, no microprint. Nothing carries shape with a hairline stroke.
-- Full (≥ 48px): the impossible-cube folds as quiet engraved grooves, and microprint along the two lower bevel edges: `FIRST GM` / `BLOCK <n>`.
-- Same art at every streak length; `render()` takes only `size`, `on`, `block`, `title`. `on: false` (page only) is the same pin, unlit.
-- Checked by screenshot in headless Chrome at 18px on light and dark rows (1x and 2x DPR) and at 200-256px.
+One object, two levels of detail (`lib/badge-svg.js`), lit by one key light from the upper left:
+- Machined bevel as six chamfer facets, each shaded by its real angle to the light (with a little sheen along its length). Dark enamel band under a clearcoat softbox reflection. A recessed well whose walls are lit on the far side, as a real recess is. The Saito cube stands on the well floor with ambient occlusion under it; top face takes the key light, left the fill, right is in shade. Specular glints on the cube and the bevel, a two-layer contact shadow.
+- Nameplate (< 48px): facets, well and three solid faces only. No grain, microprint, folds or filters; nothing carries shape with a hairline stroke.
+- Full (>= 48px): brushed-metal grain on the bevel, a cool rim light on the shadow-side edges, cube edge bevels, the impossible-cube folds as engraved grooves, and a security layer that only resolves when zoomed:
+  - a guilloché rosette engraved in the well floor, its curves seeded by `hash(publickey | first_block)`, so every holder's cube is fingerprinted (same holder, same engraving);
+  - a microtext ring around the enamel: `GM · SAITO · <key fragment> · FIRST GM BLOCK <n>`;
+  - nanotext `gm` inside the cube's top face.
+- Same art at every streak length; `render()` takes `size`, `on`, `block`, `publickey`, `title`. `on: false` (page only) is the same pin, unlit.
+- The security layer is not a token and proves nothing on its own: the streak is always recomputed from posts. It makes a screenshot of someone else's cube recognisably theirs and hard to pass off.
+- Checked by screenshot in headless Chrome at 18px on light and dark rows and at 300px and 1400px.
 
 ## Index vs p2p
 - Index is the source of truth: block time, every live streak sent in bulk.

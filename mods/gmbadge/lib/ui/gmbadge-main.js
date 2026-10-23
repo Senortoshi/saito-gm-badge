@@ -68,6 +68,7 @@ class GMBadgeMain {
       size: 200,
       on: v.on,
       block: v.first_block,
+      publickey: key, // seeds this holder's engraving
       title: v.on ? `gm ${v.streak} days in a row` : 'gm cube, off'
     });
     const stat = (n, label) =>
