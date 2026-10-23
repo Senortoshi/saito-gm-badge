@@ -1,7 +1,7 @@
 {
   "name": "saito-gm-badge",
   "version": "0.1.0",
-  "description": "Say gm in Red Square every day. Earn a verifiable streak badge NFT on Saito.",
+  "description": "You say gm. A cube shows up next to your name. You say gm tomorrow or it goes away.",
   "private": true,
   "scripts": {
     "test": "node --test tests/gmbadge/streaks.test.js"

@@ -1,0 +1,84 @@
+diff --git a/node/lib/saito/browser.ts b/node/lib/saito/browser.ts
+index a6cb3ba..c8a75ce 100644
+--- a/node/lib/saito/browser.ts
++++ b/node/lib/saito/browser.ts
+@@ -1891,8 +1891,8 @@ class Browser {
+     };
+   }
+ 
+-  returnAddressHTML(key, disable = false) {
+-    return `<div class="saito-address" data-id="${key}" ${disable ? `data-disable="true"` : ''}>${this.app.keychain.returnUsername(key)}</div>`;
++  returnAddressHTML(key, disable = false, extra_classes = '') {
++    return `<div class="saito-address${extra_classes ? ' ' + extra_classes : ''}" data-id="${key}" ${disable ? `data-disable="true"` : ''}>${this.app.keychain.returnUsername(key)}</div>`;
+   }
+ 
+   updateAddressHTML(key, id) {
+diff --git a/node/mods/redsquare/lib/tweet-header.template.js b/node/mods/redsquare/lib/tweet-header.template.js
+index 737839f..9084bfa 100644
+--- a/node/mods/redsquare/lib/tweet-header.template.js
++++ b/node/mods/redsquare/lib/tweet-header.template.js
+@@ -26,10 +26,24 @@ function resolveMode({ mode, presentation } = {}) {
+   return 'compact';
+ }
+ 
++//
++// The author's name goes through app.browser.returnAddressHTML like every
++// other name in Saito, so modules that decorate names (and core's
++// username resolution) see tweet authors too.
++//
++function nameHTML(name, publicKey, app) {
++  if (publicKey && app?.browser?.returnAddressHTML) {
++    return app.browser.returnAddressHTML(publicKey, false, 'primary');
++  }
++  return `<span class="primary saito-address">${name}</span>`;
++}
++
+ module.exports = ({
+   mode,
+   presentation,
+   name = '',
++  publicKey = '',
++  app = null,
+   handle = '',
+   time = '',
+   secondary = ''
+@@ -43,7 +57,7 @@ module.exports = ({
+ 
+     return `
+     <header class="header compose">
+-      <span class="primary saito-address">${name}</span>
++      ${nameHTML(name, publicKey, app)}
+       ${secondaryHtml}
+     </header>
+   `;
+@@ -56,7 +70,7 @@ module.exports = ({
+     // Identity owns name, time, and key. Body is a sibling — never a time host.
+     return `
+     <header class="header expanded">
+-      <span class="primary saito-address">${name}</span>
++      ${nameHTML(name, publicKey, app)}
+       ${timeHtml}
+       ${handleHtml}
+     </header>
+@@ -66,7 +80,7 @@ module.exports = ({
+   // compact — Username · time (no public key on the timeline)
+   const parts = [];
+ 
+-  parts.push(`<span class="primary saito-address">${name}</span>`);
++  parts.push(nameHTML(name, publicKey, app));
+ 
+   if (time) {
+     parts.push(`<span class="sep" aria-hidden="true">·</span>`);
+diff --git a/node/mods/redsquare/lib/tweet.template.js b/node/mods/redsquare/lib/tweet.template.js
+index 5d7e941..473d4ba 100644
+--- a/node/mods/redsquare/lib/tweet.template.js
++++ b/node/mods/redsquare/lib/tweet.template.js
+@@ -79,6 +79,8 @@ const TweetTemplate = (tweet, className = 'tweet', options = {}) => {
+     mode,
+     presentation,
+     name: tweet.username || '',
++    publicKey: tweet.publicKey || '',
++    app: tweet.app,
+     handle,
+     time: mode === 'compose' ? '' : time,
+     secondary: options.secondary != null ? String(options.secondary) : ''

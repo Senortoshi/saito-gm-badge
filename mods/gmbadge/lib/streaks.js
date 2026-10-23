@@ -9,27 +9,9 @@
 
 const DAY_MS = 86400000;
 
-const TIERS = [
-  { id: 0, name: 'none', label: 'No streak', rarity: '', min: 0 },
-  { id: 1, name: 'genesis', label: 'Common · Genesis', rarity: 'Common', min: 1 },
-  { id: 2, name: 'timestamp', label: 'Uncommon · Timestamp', rarity: 'Uncommon', min: 7 },
-  { id: 3, name: 'merkle', label: 'Rare · Merkle', rarity: 'Rare', min: 30 },
-  { id: 4, name: 'routing', label: 'Epic · Routing', rarity: 'Epic', min: 100 },
-  {
-    id: 5,
-    name: 'goldenticket',
-    label: 'Legendary · Golden Ticket',
-    rarity: 'Legendary',
-    min: 365
-  },
-  { id: 6, name: 'satoshi', label: 'Exotic · Satoshi', rarity: 'Exotic', min: 1000 }
-];
-
-const MILESTONES = [7, 30, 100, 365, 1000];
-
 //
 // "gm", "GM", "gm fam", "gm ☀️", "☀️ gm", "gm!" all count.
-// "gmgm", "good morning", "omg" do not.
+// "gmgm", "good morning", "omg", "say gm" do not.
 //
 function isGm(text) {
   if (typeof text !== 'string') {
@@ -50,29 +32,10 @@ function dayString(index) {
   return new Date(Number(index) * DAY_MS).toISOString().slice(0, 10);
 }
 
-function tierFor(streak) {
-  let found = TIERS[0];
-  for (const tier of TIERS) {
-    if (tier.min > 0 && streak >= tier.min) {
-      found = tier;
-    }
-  }
-  return found;
-}
-
-function nextMilestone(streak) {
-  for (const m of MILESTONES) {
-    if (m > streak) {
-      return m;
-    }
-  }
-  return null;
-}
-
 function emptyState(publickey = '') {
   return {
     publickey,
-    serial: null,
+    first_block: null, // block of the first gm; earlier is lower
     current: 0,
     longest: 0,
     lifetime: 0,
@@ -82,13 +45,14 @@ function emptyState(publickey = '') {
 }
 
 //
-// Apply one confirmed gm on `day` to a stored state.
-// Days must arrive in non-decreasing order (blocks are processed in order).
-// A second gm on the same day, or a day older than the last one, is ignored.
+// Apply one confirmed gm on `day`, included in block `block`, to a stored
+// state. Days must arrive in non-decreasing order (blocks are processed in
+// order). A second gm on the same day, or a day older than the last one, is
+// ignored. The first gm ever records its block: that is the earliness proof.
 //
-function applyGm(previous, day) {
+function applyGm(previous, day, block = null) {
   const state = Object.assign(emptyState(), previous || {});
-  const result = { state, duplicate: false, first: false, broke: false, milestone: null };
+  const result = { state, duplicate: false, first: false, broke: false };
   day = Number(day);
 
   if (state.last_day != null && day <= Number(state.last_day)) {
@@ -99,6 +63,7 @@ function applyGm(previous, day) {
   if (!state.lifetime || state.first_day == null) {
     result.first = true;
     state.first_day = day;
+    state.first_block = block != null && Number(block) > 0 ? Number(block) : null;
   }
 
   if (state.last_day != null && day === Number(state.last_day) + 1) {
@@ -115,59 +80,58 @@ function applyGm(previous, day) {
   if (state.current > Number(state.longest)) {
     state.longest = state.current;
   }
-  if (MILESTONES.includes(state.current)) {
-    result.milestone = state.current;
-  }
   return result;
 }
 
 //
-// What the badge looks like *today*. A streak is alive if the holder
-// posted today or yesterday. One missed day shows a cracked badge for
-// 24 hours; after that the badge goes dormant until the next gm.
+// p2p only. gms = [{ day, block, ts }] read from an archive, where day comes
+// from the sender-signed tx timestamp. Sort by block, then keep a gm only if
+// its day is not earlier than a gm that confirmed before it, so nobody can
+// backdate a gm into their existing history. Same-day repeats are left for
+// applyGm to drop.
+//
+function inBlockOrder(gms) {
+  const sorted = (gms || []).slice().sort((a, b) => a.block - b.block || a.ts - b.ts);
+  const kept = [];
+  let last = -Infinity;
+  for (const gm of sorted) {
+    if (gm.day >= last) {
+      kept.push(gm);
+      last = gm.day;
+    }
+  }
+  return kept;
+}
+
+//
+// What shows *today*. The cube is on while the last gm was today or
+// yesterday (UTC), and the number is the consecutive days. Otherwise it is
+// off; the next gm starts again at 1.
 //
 function view(state, today) {
   const s = Object.assign(emptyState(), state || {});
-  today = Number(today);
-  const gap = s.last_day == null ? null : today - Number(s.last_day);
-  const alive = gap != null && gap <= 1;
-  const streak = alive ? Number(s.current) : 0;
-  const tier = tierFor(streak);
-  const cracked = gap === 2 && Number(s.lifetime) > 0;
-  const dormant = gap != null && gap > 2;
-  const next = nextMilestone(streak);
+  const gap = s.last_day == null ? null : Number(today) - Number(s.last_day);
+  const on = gap != null && gap >= 0 && gap <= 1;
 
   return {
     publickey: s.publickey,
-    serial: s.serial,
-    streak,
-    tier,
-    cracked,
-    dormant,
+    on,
+    streak: on ? Number(s.current) : 0,
     posted_today: gap === 0,
-    at_risk: gap === 1,
-    lifetime: Number(s.lifetime),
     longest: Number(s.longest),
-    lost_streak: cracked || dormant ? Number(s.current) : 0,
-    first_day: s.first_day,
-    first_date: dayString(s.first_day),
-    last_day: s.last_day,
-    last_date: dayString(s.last_day),
-    next_milestone: next,
-    days_to_next: next ? next - streak : 0
+    lifetime: Number(s.lifetime),
+    first_block: s.first_block,
+    first_date: dayString(s.first_day)
   };
 }
 
 module.exports = {
   DAY_MS,
-  TIERS,
-  MILESTONES,
   isGm,
   dayIndex,
   dayString,
-  tierFor,
-  nextMilestone,
   emptyState,
   applyGm,
+  inBlockOrder,
   view
 };

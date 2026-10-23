@@ -1,12 +1,41 @@
 'use strict';
 
 //
-// Pure SVG renderer for the gm badge.
+// Pure SVG renderer for the gm cube.
 //
-// Outer object: the locked hex. Inner object + microprint: the Saito
-// impossible cube (hex, Y, plus the extra inner fold lines).
-// Legendary and Exotic get a living metallic rim.
+// One object at every streak length: a machined hex pin with a dark enamel
+// face, a recessed well, and the Saito cube sitting in it. Lit by a single
+// key light from the upper left, with a soft fill, a specular glint and a
+// faint contact shadow.
 //
+// Two levels of detail of the same object:
+//   nameplate (size < 48) three solid cube faces, thick bevel, no microprint
+//   full      (size >= 48) adds the impossible-cube folds as engraved grooves
+//             and a quiet microprint of the first-gm block
+//
+// Shape is carried by fills and gradients only. No hairline strokes, so the
+// silhouette survives at 18px.
+//
+
+const BRAND = {
+  lit: '#ff8d99',
+  red: '#f71f3d',
+  mid: '#c8102e',
+  deep: '#6e0718',
+  shade: '#3d030c'
+};
+
+const UNLIT = {
+  lit: '#a1a1aa',
+  red: '#71717a',
+  mid: '#52525b',
+  deep: '#3f3f46',
+  shade: '#27272a'
+};
+
+function f(n) {
+  return Number(n).toFixed(2);
+}
 
 function hexPoints(cx, cy, r) {
   const pts = [];
@@ -17,57 +46,53 @@ function hexPoints(cx, cy, r) {
   return pts;
 }
 
+//
+// Pointy-top hexagon with rounded corners: straight edges joined by
+// quadratic curves through each vertex.
+//
+function roundedHex(cx, cy, r, round) {
+  const pts = hexPoints(cx, cy, r);
+  const t = Math.min(round / r, 0.45);
+  let d = '';
+  for (let i = 0; i < 6; i++) {
+    const p = pts[i];
+    const prev = pts[(i + 5) % 6];
+    const next = pts[(i + 1) % 6];
+    const a = [p[0] + (prev[0] - p[0]) * t, p[1] + (prev[1] - p[1]) * t];
+    const b = [p[0] + (next[0] - p[0]) * t, p[1] + (next[1] - p[1]) * t];
+    d += `${i === 0 ? 'M' : 'L'}${f(a[0])} ${f(a[1])} Q${f(p[0])} ${f(p[1])} ${f(b[0])} ${f(b[1])} `;
+  }
+  return d + 'Z';
+}
+
 function poly(pts) {
-  return pts.map((p) => `${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(' ');
+  return 'M' + pts.map((p) => `${f(p[0])} ${f(p[1])}`).join(' L') + ' Z';
 }
 
-function isoCube(cx, cy, L) {
-  const dx = L * Math.cos(Math.PI / 6);
-  const dy = L * 0.5;
-  const N = [cx, cy - L];
-  const TR = [cx + dx, cy - dy];
-  const TL = [cx - dx, cy - dy];
-  const F = [cx, cy];
-  const BF = [cx, cy + L];
-  const BR = [cx + dx, cy + dy];
-  const BL = [cx - dx, cy + dy];
-  return {
-    top: poly([N, TR, F, TL]),
-    left: poly([TL, F, BF, BL]),
-    right: poly([TR, F, BF, BR])
-  };
+function line(a, b) {
+  return `M${f(a[0])} ${f(a[1])} L${f(b[0])} ${f(b[1])}`;
 }
 
-function CUBE(cx, cy, r) {
+//
+// Isometric cube points around (cx, cy) with silhouette radius r.
+// L, T and B are the Saito "impossible cube" fold points.
+//
+function cubePoints(cx, cy, r) {
   const dx = r * Math.cos(Math.PI / 6);
   const dy = r * 0.5;
-  const f = (x, y) => `${x.toFixed(2)} ${y.toFixed(2)}`;
-  const N = [cx, cy - r];
-  const NE = [cx + dx, cy - dy];
-  const SE = [cx + dx, cy + dy];
-  const S = [cx, cy + r];
-  const SW = [cx - dx, cy + dy];
-  const NW = [cx - dx, cy - dy];
-  const C = [cx, cy];
-  const L = [cx - dx * 0.5, cy - r * 0.296];
-  const T = [cx + dx * 0.458, cy - r * 0.296];
-  const B = [cx, cy + r * 0.481];
-  return (
-    `M${f(N[0], N[1])} L${f(NE[0], NE[1])} L${f(SE[0], SE[1])} L${f(S[0], S[1])} L${f(SW[0], SW[1])} L${f(NW[0], NW[1])} Z ` +
-    `M${f(NW[0], NW[1])} L${f(C[0], C[1])} L${f(NE[0], NE[1])} ` +
-    `M${f(C[0], C[1])} L${f(S[0], S[1])} ` +
-    `M${f(SW[0], SW[1])} L${f(L[0], L[1])} L${f(NW[0], NW[1])} ` +
-    `M${f(L[0], L[1])} L${f(C[0], C[1])} ` +
-    `M${f(N[0], N[1])} L${f(T[0], T[1])} L${f(NE[0], NE[1])} ` +
-    `M${f(T[0], T[1])} L${f(C[0], C[1])} ` +
-    `M${f(B[0], B[1])} L${f(SE[0], SE[1])}`
-  );
+  return {
+    N: [cx, cy - r],
+    NE: [cx + dx, cy - dy],
+    SE: [cx + dx, cy + dy],
+    S: [cx, cy + r],
+    SW: [cx - dx, cy + dy],
+    NW: [cx - dx, cy - dy],
+    C: [cx, cy],
+    L: [cx - dx * 0.5, cy - r * 0.296],
+    T: [cx + dx * 0.458, cy - r * 0.296],
+    B: [cx, cy + r * 0.481]
+  };
 }
-
-const BADGE = hexPoints(50, 50, 40);
-const BADGE_POLY = poly(BADGE);
-const BADGE_PATH = `M${BADGE.map((p) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' L ')} Z`;
-const INNER = isoCube(50, 51, 16);
 
 function esc(value) {
   return String(value == null ? '' : value).replace(/[&<>"']/g, (c) => {
@@ -75,253 +100,120 @@ function esc(value) {
   });
 }
 
-const RANKS = {
-  1: { fill: '#111111', stroke: '#d9d4cc', glyph: '#f4f1ea', ink: '#f5f5f4' },
-  2: { fill: '#161412', stroke: '#e7d3a8', glyph: '#f6ead2', ink: '#f6ead2' },
-  3: { fill: '#c5a028', stroke: '#f4e4a4', glyph: '#111111', ink: '#3a2a08' },
-  4: { fill: '#0b1c24', stroke: '#e0f2fe', glyph: '#f0f9ff', ink: '#e0f2fe' },
-  5: {
-    fill: '#120e08',
-    stroke: '#e8c547',
-    glyph: '#f6ead2',
-    ink: '#f6ead2',
-    alive: 'gold'
-  },
-  6: {
-    fill: '#050505',
-    stroke: '#fafafa',
-    glyph: '#fafafa',
-    ink: '#fafafa',
-    alive: 'chrome',
-    stars: true
-  }
-};
-
-function sproutMark(color) {
-  return (
-    `<path d="M50 74 V42" fill="none" stroke="${color}" stroke-width="3.4" stroke-linecap="round"/>` +
-    `<path d="M50 58 C48 46 36 42 30 48 C34 56 44 60 50 58 Z" fill="${color}"/>` +
-    `<path d="M50 54 C52 42 64 38 70 44 C66 52 56 56 50 54 Z" fill="${color}"/>`
-  );
-}
-
-function saitoCubeMark(ink, width, opacity, r = 21) {
-  return `<path d="${CUBE(50, 50, r)}" fill="none" stroke="${ink}" stroke-width="${width}" stroke-linejoin="miter" stroke-miterlimit="2.4" opacity="${opacity}"/>`;
-}
-
-function cubePattern(id, ink) {
-  return (
-    `<pattern id="${id}p" width="5.4" height="6.24" patternUnits="userSpaceOnUse">` +
-    `<path d="${CUBE(2.7, 3.12, 1.55)}" fill="none" stroke="${ink}" stroke-width="0.28" stroke-linejoin="miter"/>` +
-    `</pattern>`
-  );
-}
-
-function hash32(str) {
-  let h = 2166136261;
-  const s = String(str == null ? '' : str);
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-function serialStars(opts, ink) {
-  const h = hash32(`${opts.serial || ''}|${opts.issuer || ''}|${opts.sig || ''}`);
-  let dots = '';
-  for (let i = 0; i < 6; i++) {
-    const a = (((h >>> (i * 5)) & 31) / 31) * Math.PI * 2;
-    const r = 11 + ((h >>> (i * 3 + 2)) & 15) * 0.45;
-    const x = 50 + r * Math.cos(a);
-    const y = 48 + r * Math.sin(a) * 0.86;
-    dots += `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="0.85" fill="${ink}" opacity="0.4"/>`;
-  }
-  return dots;
-}
-
-function livingRimDefs(id, kind, still = false) {
-  const spin = (dur) =>
-    still
-      ? ''
-      : `<animateTransform attributeName="gradientTransform" type="rotate" from="0 0.5 0.5" to="360 0.5 0.5" dur="${dur}" repeatCount="indefinite"/>`;
-  const frozen = still ? ' gradientTransform="rotate(40 0.5 0.5)"' : '';
-  if (kind === 'gold') {
-    return (
-      `<linearGradient id="${id}rim" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox"${frozen}>` +
-      `<stop offset="0" stop-color="#5a3c08"/>` +
-      `<stop offset="0.22" stop-color="#e8c547"/>` +
-      `<stop offset="0.4" stop-color="#fff4c4"/>` +
-      `<stop offset="0.55" stop-color="#c5a028"/>` +
-      `<stop offset="0.78" stop-color="#7a5410"/>` +
-      `<stop offset="1" stop-color="#e8c547"/>` +
-      spin('3.6s') +
-      `</linearGradient>`
-    );
-  }
-  return (
-    `<linearGradient id="${id}rim" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox"${frozen}>` +
-    `<stop offset="0" stop-color="#52525b"/>` +
-    `<stop offset="0.18" stop-color="#fafafa"/>` +
-    `<stop offset="0.36" stop-color="#67e8f9"/>` +
-    `<stop offset="0.52" stop-color="#e879f9"/>` +
-    `<stop offset="0.7" stop-color="#fafafa"/>` +
-    `<stop offset="1" stop-color="#27272a"/>` +
-    spin('4.2s') +
-    `</linearGradient>`
-  );
-}
-
-//
-// One animated gradient per rim kind for the whole document. Inline badges
-// reference these by id instead of carrying their own, so a feed with 400
-// living rims runs 2 SMIL animations instead of 400.
-//
-function sharedRimDefs() {
-  return (
-    `<svg class="gm-rim-defs" width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">` +
-    `<defs>${livingRimDefs('gmshared-gold', 'gold').replace('gmshared-goldrim', 'gm-rim-gold')}` +
-    `${livingRimDefs('gmshared-chrome', 'chrome').replace('gmshared-chromerim', 'gm-rim-chrome')}</defs></svg>`
-  );
-}
-
-function livingRim(id, size) {
-  const w = size < 28 ? 4.4 : 3.4;
-  return (
-    `<polygon points="${BADGE_POLY}" fill="none" stroke="#09090b" stroke-width="${w + 1.8}" stroke-linejoin="round"/>` +
-    `<polygon points="${BADGE_POLY}" fill="none" stroke="url(#${id}rim)" stroke-width="${w}" stroke-linejoin="round"/>` +
-    `<polygon points="${BADGE_POLY}" fill="none" stroke="#ffffff" stroke-width="0.55" stroke-linejoin="round" opacity="0.35"/>`
-  );
-}
-
-function microDetail(id, opts, ink) {
-  const serial = opts.serial != null ? String(opts.serial) : '';
-  const issuer = String(opts.issuer || '').slice(0, 8) || 'unissued';
-  const sig = String(opts.sig || '').slice(0, 8) || 'pending';
-  const line = serial ? `gm-${serial}-${issuer}-${sig}` : `gm-${issuer}-${sig}`;
-  const field = 'GM SAITO GM FAM GM SAITO GM FAM ';
-  const gmField = 'gm gm gm gm gm gm gm gm gm gm gm gm ';
-  let rows = '';
-  let gmRows = '';
-  for (let i = 0; i < 10; i++) {
-    rows += `<text x="-22" y="${10 + i * 7}" font-size="2.2" font-weight="600" letter-spacing="0.4">${field}</text>`;
-    gmRows += `<text x="-16" y="${12 + i * 7}" font-size="3.1" font-weight="700" letter-spacing="0.9">${gmField}</text>`;
-  }
-  return (
-    `<g clip-path="url(#${id}k)" fill="${ink}" font-family="ui-monospace, Menlo, Consolas, monospace">` +
-    `<polygon points="${BADGE_POLY}" fill="url(#${id}p)" opacity="0.22"/>` +
-    `<g opacity="0.07" transform="rotate(-24 50 50)">${rows}</g>` +
-    `<g opacity="0.05" transform="rotate(-24 50 50)">${gmRows}</g>` +
-    `<text x="50" y="84.2" text-anchor="middle" font-size="2.4" opacity="0.38" letter-spacing="0.18">${esc(line)}</text>` +
-    `</g>`
-  );
-}
-
 let uid = 0;
 
+function gradients(id, on) {
+  const c = on ? BRAND : UNLIT;
+  return (
+    // contact shadow
+    `<radialGradient id="${id}sh" cx="0.5" cy="0.5" r="0.5">` +
+    `<stop offset="0" stop-color="#000" stop-opacity="0.42"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>` +
+    // machined bevel: bright where the key light hits, dark on the far side
+    `<linearGradient id="${id}bevel" x1="0.18" y1="0.04" x2="0.82" y2="0.96">` +
+    `<stop offset="0" stop-color="#fbfbfc"/><stop offset="0.28" stop-color="#d4d4d8"/>` +
+    `<stop offset="0.62" stop-color="#71717a"/><stop offset="1" stop-color="#27272a"/></linearGradient>` +
+    // enamel face, warmed by the key light at the upper left
+    `<radialGradient id="${id}face" cx="0.34" cy="0.26" r="0.86">` +
+    `<stop offset="0" stop-color="#3a3a43"/><stop offset="0.5" stop-color="#18181d"/><stop offset="1" stop-color="#08080a"/></radialGradient>` +
+    // recessed well: its upper wall is in shadow, its lower lip catches light
+    `<linearGradient id="${id}well" x1="0.3" y1="0" x2="0.7" y2="1">` +
+    `<stop offset="0" stop-color="#020203"/><stop offset="0.7" stop-color="#0d0d10"/><stop offset="1" stop-color="#26262c"/></linearGradient>` +
+    // cube faces: top takes the key light, left the fill, right is in shade
+    `<linearGradient id="${id}top" x1="0.1" y1="0.2" x2="0.9" y2="0.8">` +
+    `<stop offset="0" stop-color="${c.lit}"/><stop offset="1" stop-color="${c.red}"/></linearGradient>` +
+    `<linearGradient id="${id}left" x1="0" y1="0" x2="0.6" y2="1">` +
+    `<stop offset="0" stop-color="${c.red}"/><stop offset="1" stop-color="${c.mid}"/></linearGradient>` +
+    `<linearGradient id="${id}right" x1="0" y1="0" x2="1" y2="1">` +
+    `<stop offset="0" stop-color="${c.deep}"/><stop offset="1" stop-color="${c.shade}"/></linearGradient>` +
+    // gloss over the upper enamel, and the specular glint
+    `<radialGradient id="${id}gloss" cx="0.5" cy="0.5" r="0.5">` +
+    `<stop offset="0" stop-color="#fff" stop-opacity="0.2"/><stop offset="0.6" stop-color="#fff" stop-opacity="0.06"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>` +
+    `<radialGradient id="${id}spec" cx="0.5" cy="0.5" r="0.5">` +
+    `<stop offset="0" stop-color="#fff" stop-opacity="0.95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>`
+  );
+}
+
+//
+// opts:
+//   size   pixel size (default 64)
+//   on     lit cube (default true); false draws the same pin, unlit
+//   block  first-gm block id, microprinted at full detail
+//   title  accessible label
+//
 function render(opts = {}) {
-  const tierId =
-    typeof opts.tier === 'object' && opts.tier ? Number(opts.tier.id) : Number(opts.tier || 0);
-  const streak = Number(opts.streak || 0);
-  const serial = opts.serial != null ? Number(opts.serial) : null;
-  const cracked = !!opts.cracked;
-  const dormant = !!opts.dormant;
-  const counterfeit = !!opts.counterfeit;
   const size = Number(opts.size || 64);
-  const showLabel = opts.label !== false && size >= 40 && streak >= 7;
-  const micro = opts.micro !== false && size >= 48;
-  const id = `gm${++uid}`;
-  const effective = dormant ? 0 : tierId;
-  const rim = opts.rim || 'smil';
+  const on = opts.on !== false;
+  const full = size >= 48;
+  const id = `gmc${++uid}`;
+  const title = opts.title || 'gm cube';
 
-  const title =
-    opts.title ||
-    (counterfeit
-      ? 'COUNTERFEIT gm badge: issuer key does not match'
-      : cracked
-        ? `gm streak broken${serial != null ? ` · badge #${serial}` : ''}`
-        : streak > 0
-          ? `gm streak: ${streak} day${streak === 1 ? '' : 's'}${serial != null ? ` · badge #${serial}` : ''}`
-          : serial != null
-            ? `gm badge #${serial}`
-            : 'gm badge');
+  const cx = 50;
+  const cy = 47;
+  const faceR = full ? 39 : 37; // thicker bevel at nameplate size
+  const wellR = full ? 33 : 32.5;
+  const round = full ? 1 : 0.7; // tighter corners keep the hex reading as a hex when tiny
+  const k = cubePoints(cx, cy + 1, full ? 22 : 26);
+  const face = roundedHex(cx, cy, faceR, 7.5 * round);
 
-  let defs = `<clipPath id="${id}k"><polygon points="${BADGE_POLY}"/></clipPath>`;
-  let body = '';
-  let glyph = '';
-  let detail = '';
+  let out =
+    `<defs>${gradients(id, on)}` +
+    `<clipPath id="${id}clip"><path d="${face}"/></clipPath></defs>`;
 
-  if (counterfeit) {
-    body =
-      `<polygon points="${BADGE_POLY}" fill="#171717"/>` +
-      `<polygon points="${BADGE_POLY}" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linejoin="round"/>`;
-    glyph =
-      saitoCubeMark('#737373', 1.4, 0.7) +
-      `<path d="M32 32 L68 68 M68 32 L32 68" fill="none" stroke="#ef4444" stroke-width="3.8" stroke-linecap="round"/>` +
-      `<g clip-path="url(#${id}k)"><rect x="-16" y="58" width="132" height="10" fill="#ef4444" transform="rotate(-16 50 63)"/>` +
-      `<text x="50" y="65.2" text-anchor="middle" font-size="6.5" font-weight="800" fill="#ffffff" font-family="system-ui, sans-serif" letter-spacing="1.2" transform="rotate(-16 50 63)">COUNTERFEIT</text></g>`;
-  } else if (cracked) {
-    body =
-      `<polygon points="${BADGE_POLY}" fill="#1f1f1f"/>` +
-      `<polygon points="${BADGE_POLY}" fill="none" stroke="#6b6b6b" stroke-width="1.3" stroke-linejoin="round"/>`;
-    if (micro) {
-      defs += cubePattern(id, '#d4d4d4');
-      detail = microDetail(id, opts, '#d4d4d4');
-    }
-    glyph =
-      saitoCubeMark('#a3a3a3', 1.35, 0.55) +
-      `<path d="M58 18 L52 40 L60 52 L46 78" fill="none" stroke="#0a0a0a" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>` +
-      `<path d="M58 18 L52 40 L60 52 L46 78" fill="none" stroke="#a3a3a3" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`;
-  } else if (effective === 0) {
-    body = `<polygon points="${BADGE_POLY}" fill="none" stroke="#525252" stroke-width="1.8" stroke-linejoin="round" stroke-dasharray="4 3.2"/>`;
-  } else {
-    const rank = RANKS[effective] || RANKS[1];
-    const edge = size < 28 ? 2.6 : 1.35;
-    if (rank.alive && rim === 'shared') {
-      body =
-        `<polygon points="${BADGE_POLY}" fill="${rank.fill}"/>` +
-        livingRim(id, size).replace(`url(#${id}rim)`, `url(#gm-rim-${rank.alive})`);
-    } else if (rank.alive && rim === 'css') {
-      // rim is drawn by an HTML overlay (compositor-only transform animation); keep the dark base ring
-      const w = size < 28 ? 4.4 : 3.4;
-      body =
-        `<polygon points="${BADGE_POLY}" fill="${rank.fill}"/>` +
-        `<polygon points="${BADGE_POLY}" fill="none" stroke="#09090b" stroke-width="${w + 1.8}" stroke-linejoin="round"/>`;
-    } else if (rank.alive) {
-      defs += livingRimDefs(id, rank.alive, rim === 'still');
-      body = `<polygon points="${BADGE_POLY}" fill="${rank.fill}"/>` + livingRim(id, size);
-    } else {
-      body =
-        `<polygon points="${BADGE_POLY}" fill="${rank.fill}"/>` +
-        `<polygon points="${BADGE_POLY}" fill="none" stroke="${rank.stroke}" stroke-width="${edge}" stroke-linejoin="round"/>`;
-    }
-    if (micro) {
-      defs += cubePattern(id, rank.ink);
-      detail = microDetail(id, opts, rank.ink);
-    }
-    const cubeW = rank.alive ? 1.7 : 1.35;
-    const cubeOp = rank.alive ? 0.72 : 0.28;
-    glyph = saitoCubeMark(rank.ink, cubeW, cubeOp) + sproutMark(rank.glyph);
-    if (rank.stars && micro) {
-      glyph += `<g clip-path="url(#${id}k)">${serialStars(opts, rank.ink)}</g>`;
-    }
+  // contact shadow, then the pin body
+  out += `<ellipse cx="50" cy="93.5" rx="31" ry="4.6" fill="url(#${id}sh)"/>`;
+  out += `<path d="${roundedHex(cx, cy, 44, 9 * round)}" fill="url(#${id}bevel)"/>`;
+  out += `<path d="${face}" fill="url(#${id}face)"/>`;
+  out += `<path d="${roundedHex(cx, cy + 0.8, wellR, 6.5 * round)}" fill="url(#${id}well)"/>`;
+
+  // the cube: a soft shadow in the well, then three solid faces
+  out += `<path d="${poly([k.N, k.NE, k.SE, k.S, k.SW, k.NW])}" transform="translate(0.9 1.4)" fill="#000" opacity="0.45"/>`;
+  out += `<path d="${poly([k.N, k.NE, k.C, k.NW])}" fill="url(#${id}top)"/>`;
+  out += `<path d="${poly([k.NW, k.C, k.S, k.SW])}" fill="url(#${id}left)"/>`;
+  out += `<path d="${poly([k.NE, k.SE, k.S, k.C])}" fill="url(#${id}right)"/>`;
+
+  if (full) {
+    // impossible-cube folds as engraved grooves: dark cut, light lower lip
+    const folds = [
+      line(k.SW, k.L),
+      line(k.L, k.NW),
+      line(k.L, k.C),
+      line(k.N, k.T),
+      line(k.T, k.NE),
+      line(k.T, k.C),
+      line(k.B, k.SE)
+    ].join(' ');
+    out += `<path d="${folds}" fill="none" stroke="#fff" stroke-opacity="${on ? 0.16 : 0.08}" stroke-width="0.9" stroke-linecap="round" transform="translate(0.3 0.45)"/>`;
+    out += `<path d="${folds}" fill="none" stroke="#2a030a" stroke-opacity="0.38" stroke-width="0.9" stroke-linecap="round"/>`;
   }
 
-  const labelStroke = (RANKS[effective] || RANKS[1]).stroke;
-  const labelFill = (RANKS[effective] || RANKS[1]).glyph;
-  const label = showLabel
-    ? `<g><rect x="60" y="72" rx="7" ry="7" width="30" height="18" fill="#09090b" stroke="${labelStroke}" stroke-width="1.6"/>` +
-      `<text x="75" y="85" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="${streak >= 100 ? 9 : 11}" font-weight="600" fill="${labelFill}">${streak}</text></g>`
-    : '';
+  // light catching the cube's upper-left edge
+  out += `<path d="${line(k.NW, k.N)}" stroke="#fff" stroke-opacity="${on ? 0.7 : 0.35}" stroke-width="${full ? 1.3 : 2.2}" stroke-linecap="round"/>`;
+
+  // a soft reflection of the key light on the enamel, the glint on the cube and on the bevel
+  out += `<ellipse cx="33" cy="20" rx="42" ry="24" fill="url(#${id}gloss)" clip-path="url(#${id}clip)"/>`;
+  if (on) {
+    const gx = k.N[0] - 4.5;
+    const gy = k.N[1] + 4.2;
+    out += `<ellipse cx="${f(gx)}" cy="${f(gy)}" rx="${full ? 3.6 : 5}" ry="${full ? 2 : 2.8}" fill="url(#${id}spec)" transform="rotate(-30 ${f(gx)} ${f(gy)})"/>`;
+  }
+  out += `<ellipse cx="25" cy="17.5" rx="${full ? 7 : 9}" ry="${full ? 2.2 : 3}" fill="url(#${id}spec)" opacity="0.85" transform="rotate(-30 25 17.5)"/>`;
+
+  if (full && opts.block) {
+    // engraved along the two lower edges of the enamel, between well and bevel
+    const band = (faceR + wellR) / 2 + 0.4;
+    const mx = band * Math.cos(Math.PI / 6) * 0.5;
+    const my = cy + band * 0.75;
+    const print = (x, angle, text) =>
+      `<text x="${f(x)}" y="${f(my)}" transform="rotate(${angle} ${f(x)} ${f(my)})" text-anchor="middle" dominant-baseline="middle" ` +
+      `font-family="ui-monospace, Menlo, Consolas, monospace" font-size="2.7" letter-spacing="0.45" fill="#e4e4e7" opacity="0.42">${esc(text)}</text>`;
+    out += print(50 - mx, 30, 'FIRST GM');
+    out += print(50 + mx, -30, `BLOCK ${opts.block}`);
+  }
 
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 4 92 92" width="${size}" height="${size}" data-rim="${(RANKS[effective] && RANKS[effective].alive) || ''}" class="gm-badge-svg gm-badge-tier-${effective}${cracked ? ' gm-badge-cracked' : ''}${counterfeit ? ' gm-badge-counterfeit' : ''}" role="img" aria-label="${esc(title)}">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" class="gm-cube${on ? '' : ' gm-cube-off'}" role="img" aria-label="${esc(title)}">` +
     `<title>${esc(title)}</title>` +
-    `<defs>${defs}</defs>` +
-    body +
-    detail +
-    glyph +
-    label +
+    out +
     `</svg>`
   );
 }
@@ -330,10 +222,10 @@ function renderDataUri(opts = {}) {
   return 'data:image/svg+xml;utf8,' + encodeURIComponent(render(opts));
 }
 
-const api = { render, renderDataUri, sharedRimDefs, CUBE, BADGE_PATH, isoCube, RANKS };
+const api = { render, renderDataUri };
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = api;
 }
 if (typeof window !== 'undefined') {
-  window.GMBadgeSVG = api;
+  window.GMCubeSVG = api;
 }
