@@ -6,14 +6,14 @@ Thanks Robert, all four points land. We cut it way down.
 
 **Observer.** Gone. We wrap `browser.returnAddressHTML` (call through to the previous one) and add `data-gm` + the day count to the returned `.saito-address`. One stylesheet draws the cube and number as `::after`, so `treatIdentifiers` rewriting the name and the `.saito-user` grid both leave it alone. No DOM scanning.
 
-**Trading / whose streak.** There's no token, so nothing to trade or send. A cube only ever shows on the key that posted the gms.
+**Trading / whose streak.** There's no token, so nothing to trade or send. A cube only ever shows on the key that posted the gms. On /gmbadge the large cube also carries an engraving generated from the holder's key and first-gm block, so a screenshot of someone else's cube is recognisably theirs.
 
 **Who runs the index is your call.** Without an index node, wallets fall back to reading the Archive, but only for their own key and anyone opened on /gmbadge, never for every name on screen.
 
-**One ask, as its own PR.** Red Square tweet headers print the author name directly, so they never hit `returnAddressHTML`. This patch routes them through it, with an optional `extra_classes` arg so `primary` survives: `docs/upstream/redsquare-tweet-header.patch`. The visible name doesn't change, since it already comes from `keychain.returnUsername`. Notifications and the profile name are hand-written the same way, if you want those too.
+**Code.** Branch `gmcube` on Senortoshi/saito, based on `2610/gm-badge`; it only touches `node/mods/gmbadge`: https://github.com/Senortoshi/saito/tree/gmcube. Happy to open it as a PR into `2610/gm-badge` if that works for you. Unit tests pass; next step on our side is a run on a local chain.
 
-Two things we noticed while digging, in case they're useful:
-- `storage.loadTransactions` drops the archive row's `block_id`.
-- Red Square posts are pruned from archives at ~347 days.
+**One small ask, as its own PR.** Red Square tweet headers print the author name directly, so they never hit `returnAddressHTML`. This patch routes them through it, with an optional `extra_classes` arg so `primary` survives; the visible name doesn't change since it already comes from `keychain.returnUsername`: https://github.com/Senortoshi/saito-gm-badge/blob/main/docs/upstream/redsquare-tweet-header.patch
 
-If the archive kept `block_id` and the block timestamp it sees in `onConfirmation`, wallets could verify streaks without trusting `tx.timestamp`.
+A visual walkthrough: https://claude.ai/artifact/SziGedZzuCKAZQTePLcKQx
+
+Two things we noticed in the Archive, in case they're useful: `storage.loadTransactions` drops the row's `block_id`, and Red Square posts are pruned at ~347 days. If the Archive kept the block id and block timestamp, wallets could verify streaks without trusting `tx.timestamp`.
