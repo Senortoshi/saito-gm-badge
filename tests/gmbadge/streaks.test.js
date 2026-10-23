@@ -148,7 +148,7 @@ test('one cube, two levels of detail, no rank skins', () => {
   assert.match(small, /^<svg /);
   assert.match(small, /width="18"/);
   // the nameplate stays clean: no microprint, no grain, no folds, no filters
-  assert.doesNotMatch(small, /BLOCK|textPath|feTurbulence|filter=|stroke-width="0\.9"/);
+  assert.doesNotMatch(small, /BLOCK|textPath|filter=|<animate|stroke-width="0\.9"/);
   // full detail carries the folds and the security layer
   assert.equal((large.match(/stroke-width="0\.9"/g) || []).length, 2);
   assert.match(large, /<textPath [^>]*>[^<]*FIRST GM BLOCK 184223/);
@@ -164,6 +164,13 @@ test('one cube, two levels of detail, no rank skins', () => {
   );
   assert.match(BadgeDecorator.inlineCSS(), /content:attr\(data-gm-n\)/);
   assert.doesNotMatch(small + large, /Genesis|Timestamp|Merkle|Routing|Golden|Satoshi|Legendary|Exotic|verified/i);
+});
+
+test('rim light sweeps only on the large cube, and only when asked', () => {
+  assert.doesNotMatch(SVG.render({ size: 18, sweep: true }), /<animate/); // the nameplate never moves
+  assert.doesNotMatch(SVG.render({ size: 256 }), /<animate/);
+  assert.match(SVG.render({ size: 256, sweep: true }), /<animateTransform attributeName="gradientTransform" type="rotate"[^>]*dur="7s"/);
+  assert.doesNotMatch(BadgeDecorator.inlineCSS(), /animate/);
 });
 
 test('security engraving is unique per holder and stable for the same holder', () => {

@@ -3,18 +3,20 @@
 //
 // Pure SVG renderer for the gm cube.
 //
-// One object at every streak length: a machined hex pin. A six-facet
-// chamfered bevel, a flat enamel band under clearcoat, a recessed well with
-// lit and shadowed walls, and the Saito cube standing on the well floor.
-// One key light from the upper left: every facet is shaded by its real angle
-// to that light, with a soft fill, specular glints, a cool rim light on the
-// shadow edge, ambient occlusion under the cube and a contact shadow.
+// One object at every streak length: a hex pin with a thin polished chrome
+// rim, a flat enamel band under clearcoat, a recessed well with lit and
+// shadowed walls, and the Saito cube standing on the well floor. One key
+// light from the upper left, with a soft fill, specular glints, ambient
+// occlusion under the cube and a contact shadow.
+//
+// The rim's light can sweep slowly around it (`sweep`), at full size only.
+// The nameplate never animates.
 //
 // Two levels of detail of the same object:
-//   nameplate (size < 48) facets, well and three-face cube only; no grain,
-//             no microprint, nothing that turns to noise at 18px
-//   full      (size >= 48) adds brushed-metal grain, cube edge bevels and the
-//             impossible-cube folds, plus a security layer you find by zooming:
+//   nameplate (size < 48) rim, well and three-face cube only; no microprint,
+//             no animation, nothing that turns to noise at 18px
+//   full      (size >= 48) adds cube edge bevels and the impossible-cube
+//             folds, plus a security layer you find by zooming:
 //               - a guilloché rosette engraved in the well floor, its curves
 //                 derived from the holder's key and first-gm block, so every
 //                 holder's cube is fingerprinted
@@ -171,6 +173,7 @@ let uid = 0;
 //   on         lit cube (default true); false draws the same pin, unlit
 //   block      first-gm block id (full detail: microtext)
 //   publickey  holder key (full detail: guilloché seed and microtext)
+//   sweep      full size only: the rim's light circles once every 7s
 //   title      accessible label
 //
 function render(opts = {}) {
@@ -184,8 +187,8 @@ function render(opts = {}) {
   const cx = 50;
   const cy = 46.5;
   const R = full
-    ? { outer: 46, metal: 40.5, band: 36, floor: 32.5, cube: 21.5 }
-    : { outer: 46, metal: 39, band: 35.5, floor: 32.5, cube: 25.5 };
+    ? { outer: 46, metal: 43, band: 36, floor: 32.5, cube: 21.5 }
+    : { outer: 46, metal: 40.5, band: 35.5, floor: 32.5, cube: 25.5 };
   const k = cubePoints(cx, cy + 1.2, R.cube);
 
   let defs =
@@ -216,12 +219,7 @@ function render(opts = {}) {
 
   if (full) {
     defs +=
-      `<filter id="${id}blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.6"/></filter>` +
-      // brushed metal: stretched noise, kept inside the bevel's own shape
-      `<filter id="${id}brush" x="0" y="0" width="100%" height="100%">` +
-      `<feTurbulence type="fractalNoise" baseFrequency="0.02 2.4" numOctaves="2" seed="7" result="n"/>` +
-      `<feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0.9 0 -0.32" result="w"/>` +
-      `<feComposite in="w" in2="SourceAlpha" operator="in"/></filter>`;
+      `<filter id="${id}blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.6"/></filter>`;
   }
 
   let out = '';
@@ -230,18 +228,20 @@ function render(opts = {}) {
   out += `<ellipse cx="50.5" cy="93.4" rx="33" ry="3.6" fill="url(#${id}sh)"/>`;
   out += `<ellipse cx="51" cy="92.6" rx="20" ry="1.5" fill="#000" opacity="0.3"/>`;
 
-  // machined bevel: six facets, each lit by its angle to the light
-  const bevel = facets(cx, cy, R.outer, R.metal, false, `${id}b`);
-  defs += bevel.defs;
-  out += bevel.out;
-  if (full) {
-    out += `<path d="${ring(cx, cy, R.outer, R.metal)}" fill-rule="evenodd" fill="#fff" filter="url(#${id}brush)" opacity="0.2"/>`;
-    // cool rim light catching the shadow-side edges
-    const o = hexPoints(cx, cy, R.outer - 0.35);
-    out += `<path d="${line(o[1], o[2])} ${line(o[2], o[3])}" stroke="#d6e6ff" stroke-opacity="0.45" stroke-width="0.7" stroke-linecap="round" fill="none"/>`;
-    // crisp highlight where the lit facets meet the outer edge
-    out += `<path d="${line(o[4], o[5])} ${line(o[5], o[0])}" stroke="#fff" stroke-opacity="0.8" stroke-width="0.6" stroke-linecap="round" fill="none"/>`;
-  }
+  // thin polished rim: a dark outline for the silhouette, a chrome band with
+  // bright and dark bands of light along it, and a fine inner highlight
+  const spin =
+    full && opts.sweep
+      ? `<animateTransform attributeName="gradientTransform" type="rotate" from="40 0.5 0.5" to="400 0.5 0.5" dur="7s" repeatCount="indefinite"/>`
+      : '';
+  defs +=
+    `<linearGradient id="${id}rim" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox" gradientTransform="rotate(40 0.5 0.5)">` +
+    `<stop offset="0" stop-color="#3f3f46"/><stop offset="0.16" stop-color="#f4f4f5"/><stop offset="0.3" stop-color="#a1a1aa"/>` +
+    `<stop offset="0.44" stop-color="#ffffff"/><stop offset="0.6" stop-color="#52525b"/><stop offset="0.8" stop-color="#d4d4d8"/>` +
+    `<stop offset="1" stop-color="#27272a"/>${spin}</linearGradient>`;
+  out += `<path d="${poly(hexPoints(cx, cy, R.outer + 0.6))}" fill="#09090b"/>`;
+  out += `<path d="${ring(cx, cy, R.outer, R.metal)}" fill-rule="evenodd" fill="url(#${id}rim)"/>`;
+  out += `<path d="${poly(hexPoints(cx, cy, R.metal + 0.35))}" fill="none" stroke="#fff" stroke-opacity="0.35" stroke-width="${full ? 0.5 : 1}" stroke-linejoin="round"/>`;
 
   // enamel band, the well walls (lit on the far side, as a recess is) and floor
   out += `<path d="${poly(hexPoints(cx, cy, R.metal))}" fill="url(#${id}enamel)"/>`;

@@ -54,7 +54,7 @@ The on-chain object is the Red Square transaction. The cube is a view of that hi
 - Not an NFT. Nothing is minted, deposited, dissolved, traded, or swept.
 - Not funded by saito.io. The node only indexes. Wallet stays empty.
 - Not a Twetch check, not an 8-lobe seal, not “verified green.”
-- Not six ranks, not Common → Exotic, not cracked vs dormant looks, not animated rims.
+- Not six ranks, not Common → Exotic, not cracked vs dormant looks. No animation beside names. The one exception: on `/gmbadge`, the large cube's thin chrome rim has a slow light sweep (off under reduced motion).
 - Not simulated data. Only real confirmed Red Square `gm` posts.
 
 ---
@@ -137,7 +137,7 @@ Given I open `/gmbadge` for a key, then I see consecutive days, longest run, tot
 ## Rabbit holes (do not enter)
 
 - Milestone trophies, streak freeze, perks, raffles.
-- Living rims / animation budgets.
+- Animation budgets, or any motion in the feed.
 - Soulbound / P2SH / tradable anything.
 - A new `gm` transaction type. Red Square posts are enough.
 - Reproducing Twetch’s seal or check.

@@ -33,6 +33,15 @@ class GMBadgeMain {
     el.innerHTML = this.template();
   }
 
+  // the rim's light sweep is the page's only motion; respect reduced motion
+  motionOk() {
+    try {
+      return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (err) {
+      return false;
+    }
+  }
+
   template() {
     const key = this.targetKey();
     const mine = key === this.mod.publicKey;
@@ -69,6 +78,7 @@ class GMBadgeMain {
       on: v.on,
       block: v.first_block,
       publickey: key, // seeds this holder's engraving
+      sweep: this.motionOk(),
       title: v.on ? `gm ${v.streak} days in a row` : 'gm cube, off'
     });
     const stat = (n, label) =>
